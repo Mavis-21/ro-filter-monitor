@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8faf9">
+  <title>Clearwell — RO Monitor Lab</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Clearwell home">
+        <span class="brand-symbol" aria-hidden="true">
+          <svg viewBox="0 0 40 40" fill="none"><path d="M20 5C15.5 12 10 17.5 10 23.5a10 10 0 0 0 20 0C30 17.5 24.5 12 20 5Z" stroke="currentColor" stroke-width="2.6"/><path d="M15.5 24.5c.4 2.6 2 4.1 4.5 4.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+        </span>
+        <span><strong>clearwell</strong><small>RO MONITOR LAB</small></span>
+      </a>
+      <div class="header-right"><span class="header-dot"></span> Local model playground <span class="header-version">v0.1</span></div>
+    </header>
+
+    <main>
+      <div class="page-topline"><span class="eyebrow">INTERACTIVE MODEL TEST</span><span class="topline-right">01 / 02 — SENSOR SIMULATOR</span></div>
+      <div class="hero-row">
+        <div>
+          <h1>Understand what your<br><em>water system</em> is telling you.</h1>
+          <p class="hero-copy">Adjust the sensor readings and see how the prototype classifies the system. Every result is explained in plain language.</p>
+        </div>
+        <div class="hero-mark" aria-hidden="true"><span class="mark-ring one"></span><span class="mark-ring two"></span><span class="mark-core"></span></div>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Model experiments">
+        <button class="tab active" id="simTab" type="button" role="tab" aria-controls="simView" aria-selected="true"><span class="tab-index">01</span> Household simulator</button>
+        <button class="tab" id="researchTab" type="button" role="tab" aria-controls="researchView" aria-selected="false"><span class="tab-index">02</span> NREL research model</button>
+      </div>
+
+      <section id="simView" role="tabpanel" aria-labelledby="simTab">
+        <div class="section-lead"><div><span class="section-kicker">YOUR INPUTS</span><h2>Set the sensor values</h2><p>Choose a preset or move the sliders to make your own scenario.</p></div><div class="preset-group" id="presets" aria-label="Example scenarios"></div></div>
+        <div class="workspace-grid">
+          <div class="input-panel">
+            <div class="panel-caption"><span>READINGS</span><span>Change any value below</span></div>
+            <div id="sensorFields"></div>
+          </div>
+          <aside class="result-panel" aria-live="polite">
+            <div class="panel-caption"><span>MODEL RESULT</span><span class="live-pill"><i></i> LIVE PREVIEW</span></div>
+            <div class="status-visual"><div class="status-orbit"><span id="statusIcon">✓</span></div><span class="status-caption">SYSTEM STATUS</span><h2 id="statusTitle">Loading model…</h2><p id="statusDescription">Checking the current readings.</p></div>
+            <div class="result-divider"></div>
+            <div class="result-stat"><span>Salt rejection</span><strong id="rejectionValue">—</strong></div>
+            <p class="result-hint">Calculated from raw and output TDS.</p>
+            <div class="probability-heading"><span>HOW THE MODEL SCORED THIS</span><span id="confidenceText">—</span></div>
+            <div class="prob-row"><span>Normal</span><div class="bar"><i id="barNormal"></i></div><b id="probNormal">—</b></div>
+            <div class="prob-row"><span>Warning</span><div class="bar"><i id="barWarning"></i></div><b id="probWarning">—</b></div>
+            <div class="prob-row"><span>Critical</span><div class="bar"><i id="barCritical"></i></div><b id="probCritical">—</b></div>
+            <div class="note-box" id="resultNote">This model was trained on simulated household RO readings.</div>
+          </aside>
+        </div>
+        <div class="bottom-grid">
+          <div class="info-card"><span class="section-kicker">HOW TO READ THIS</span><h3>A signal, not a diagnosis.</h3><p>The three statuses show how closely your input resembles our simulated examples. A real filter should be checked with calibrated sensors and maintenance records.</p></div>
+          <div class="info-card metrics-card"><span class="section-kicker">HELD-OUT SIMULATION TEST</span><div class="metric-line"><div><strong id="simAccuracy">—</strong><span>Accuracy</span></div><div><strong id="simF1">—</strong><span>Macro F1</span></div><div><strong id="criticalRecall">—</strong><span>Critical recall</span></div></div><p>These scores are from simulated lifecycles kept out of training. They are not field accuracy.</p></div>
+        </div>
+      </section>
+
+      <section id="researchView" role="tabpanel" aria-labelledby="researchTab" hidden>
+        <div class="section-lead"><div><span class="section-kicker">REAL EXPERIMENTAL DATA</span><h2>Explore the NREL flow model</h2><p>This separate model predicts permeate flow for an experimental seawater RO setup.</p></div><a class="source-link" href="https://catalog.data.gov/dataset/experimental-wave-desalination-data-with-variable-feed-and-pressure-input" target="_blank" rel="noopener noreferrer">View original dataset ↗</a></div>
+        <div class="research-grid">
+          <div class="input-panel"><div class="panel-caption"><span>EXPERIMENT CONDITIONS</span><span>NREL test range</span></div><div id="researchFields"></div></div>
+          <div class="research-result"><span class="section-kicker">PREDICTED PERMEATE FLOW</span><div class="big-number"><strong id="nrelFlow">—</strong><span>L/min</span></div><p id="nrelNote">Set experimental values to view a prediction.</p><div class="research-rule"></div><div class="research-metrics"><div><span>Held-out MAE</span><strong id="nrelMae">—</strong></div><div><span>Held-out R²</span><strong id="nrelR2">—</strong></div></div><div class="note-box light">NREL's experimental seawater RO data uses roughly 34–63 bar in training. This model is not calibrated for a household purifier.</div></div>
+        </div>
+      </section>
+    </main>
+
+    <footer><span>clearwell / student research prototype</span><span>Built for learning · No drinking-water safety certification · No remaining-life estimate yet</span></footer>
+  </div>
+</body>
+</html>

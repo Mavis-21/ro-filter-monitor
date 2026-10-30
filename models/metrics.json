@@ -1,0 +1,94 @@
+{
+  "trained_at_utc": "2026-10-30T06:44:32.481267+00:00",
+  "nrel_archives_sha256": {
+    "steady_state": "12d4cebcb29e2eb992b51e87717ba35ac526d440fe3f210bca6f064208ced7e6",
+    "ramp": "7457eb94d0fa5829c431a0d967e3b8951eab778bc6a9e97c5f661a461f669c1a"
+  },
+  "status_model": {
+    "source": "simulated household RO lifecycles only",
+    "train_rows": 17999,
+    "test_rows": 5636,
+    "train_lifecycles": 197,
+    "test_lifecycles": 63,
+    "accuracy": 0.8714,
+    "macro_f1": 0.8097,
+    "majority_baseline_macro_f1": 0.256,
+    "report": {
+      "normal": {
+        "precision": 0.9619532654284002,
+        "recall": 0.9140335895246229,
+        "f1-score": 0.937381404174573,
+        "support": 3513.0
+      },
+      "warning": {
+        "precision": 0.5601202404809619,
+        "recall": 0.6654761904761904,
+        "f1-score": 0.6082698585418934,
+        "support": 840.0
+      },
+      "critical": {
+        "precision": 0.8776923076923077,
+        "recall": 0.8893219017926735,
+        "f1-score": 0.8834688346883469,
+        "support": 1283.0
+      },
+      "accuracy": 0.8713626685592619,
+      "macro avg": {
+        "precision": 0.7999219378672233,
+        "recall": 0.8229438939311623,
+        "f1-score": 0.8097066991349378,
+        "support": 5636.0
+      },
+      "weighted avg": {
+        "precision": 0.8828818407067439,
+        "recall": 0.8713626685592619,
+        "f1-score": 0.8760571449513155,
+        "support": 5636.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        3211,
+        298,
+        4
+      ],
+      [
+        126,
+        559,
+        155
+      ],
+      [
+        1,
+        141,
+        1141
+      ]
+    ],
+    "label_order": [
+      "normal",
+      "warning",
+      "critical"
+    ],
+    "class_counts": {
+      "normal": 14598,
+      "critical": 5461,
+      "warning": 3576
+    }
+  },
+  "nrel_flow_model": {
+    "source": "NREL experimental seawater RO; separate dp=400 ramp campaign held out",
+    "train_rows": 17135,
+    "test_rows": 5298,
+    "mae_l_min": 0.2163,
+    "r2": 0.9489,
+    "mean_baseline_mae_l_min": 1.4104,
+    "pressure_range_bar": [
+      34.31,
+      62.88
+    ]
+  },
+  "limitations": [
+    "Status accuracy is measured only on simulated household RO lifecycles.",
+    "NREL seawater RO equipment runs at much higher pressure than a household purifier.",
+    "Neither dataset contains verified household filter replacement events; no remaining-life model is trained."
+  ]
+}
