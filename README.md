@@ -1,13 +1,6 @@
 # Clearwell — RO Monitor Lab
 
-A local research prototype for a reverse-osmosis (RO) purifier. Change the sensor values in a white-themed dashboard and inspect a model's `normal`, `warning`, or `critical` response.
-
-## What is trained
-
-1. **Household status demo:** a random-forest classifier trained on reproducible **simulated** RO filter lifecycles. Its labels represent simulated healthy, early-degradation, and severe-degradation states. The dashboard uses this model for the sensor playground.
-2. **NREL research model:** a gradient-boosted regressor trained on the public NREL steady-state data and three variable-pressure ramp campaigns. It predicts experimental permeate flow. The entire fourth ramp campaign was held out for testing.
-
-These are separate models because NREL's seawater experiment runs at roughly **34–63 bar**, while the household simulator uses much lower pressure. NREL data does not contain pump current, household filter history, or verified replacement dates. **There is no trained remaining-useful-life model yet.** A displayed simulation accuracy is not a claim of field accuracy.
+A local dashboard for learning how a reverse-osmosis (RO) filter monitor could work. It has two pages: a **model playground** for simulated cases and a **sensor station** for a future USB-connected microcontroller.
 
 ## Quick start
 
@@ -18,55 +11,67 @@ cd ro-filter-monitor
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -r requirements.txt
-python3 download_data.py
-python3 train.py
 python3 -m uvicorn app:app --host 127.0.0.1 --port 8765
 ```
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765). The included `models/model.joblib` is a trained convenience copy; run `train.py` to reproduce it with the documented sources. Only load model files from a trusted source: joblib files use Python's pickle format.
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765). A trained model is included. To rebuild the model and the synthetic CSV, run `python3 train.py`. Only load model files from a trusted source because joblib uses Python pickle.
 
-Run the focused checks with:
+## How to use it
+
+**Model playground:** Move the sliders, choose a preset, or click **Generate random test**. The random button draws one row from a simulated filter lifecycle that was excluded from model training. It shows both the simulated answer and the model's answer. The running click count is for exploration; the full test score below uses all held-out rows. Download the complete synthetic dataset from the dashboard or [`data/synthetic/ro_lifecycles.csv`](data/synthetic/ro_lifecycles.csv).
+
+**Sensor station:** Connect a microcontroller by USB, refresh the port list, select its serial port, and click **Connect**. Then click **Check all sensors**, open the live view, and click **Predict from live sensors**. The software checks whether a recent, valid number arrived for each reading. That checks communication, not the physical calibration or water safety of a sensor. The live prediction works when the board follows the message format below.
+
+## Four sensor groups
+
+| Group | Reading sent to the Mac |
+|---|---|
+| Pump current | `current_a` in amperes |
+| Permeate flow | `flow_l_min` in litres per minute |
+| Pressure | `pressure_bar` in bar; a potentiometer can simulate this initially |
+| Dual TDS | `raw_tds_ppm` and `output_tds_ppm` in ppm |
+
+The fourth group has two measurements. Software calculates salt rejection as `(1 - output TDS / raw TDS) × 100`. The model also uses filter age, cumulative litres, pump runtime, and recent trends; these are **calculated or recorded over time**, not extra physical sensors. In the current live prototype, litres and runtime count only since connection, age is entered by hand, and trends are set to zero. Permanent history is a later step.
+
+## Board-to-Mac serial format
+
+Send one JSON line at **115200 baud**, ideally about once per second:
+
+```json
+{"current_a":1.5,"flow_l_min":1.7,"pressure_bar":6.6,"raw_tds_ppm":520,"output_tds_ppm":34}
+```
+
+Each line needs all five numeric fields. Your board firmware can use C or C++ to read the sensors and print the JSON line over USB serial. The pressure field may come from a potentiometer while testing; label it as simulated in any real-data collection. Board pin assignments, electrical scaling, and calibration depend on your exact board and sensors, so those need to be filled in when the hardware is chosen. A serial packet cannot prove a sensor is wired or calibrated correctly.
+
+## Model and accuracy
+
+The status classifier learns from **23,635 generated rows** across 260 simulated filter lifecycles. It predicts `normal`, `warning`, or `critical`. Each row has a timestamp, lifecycle ID, the five direct readings, calculated salt rejection, usage, trends, and a simulated label. The CSV's `split` column says whether a lifecycle was used for development or held out for final testing.
+
+Training compares three choices on a validation set: the original random forest, a more complex random forest, and gradient boosting. The original random forest scored best on validation, so it remained the selected model. The final test held out **63 entire simulated lifecycles** (5,636 rows), preventing nearby readings from the same lifecycle from appearing in both training and test.
+
+| Held-out simulation metric | Result |
+|---|---:|
+| Accuracy | 87.1% |
+| Macro F1 (balances all three classes) | 0.810 |
+| Critical recall | 88.9% |
+| Warning F1 | 0.608 |
+
+Exact results are in [`models/metrics.json`](models/metrics.json). These numbers describe performance on **simulated conditions only**. They do not estimate performance on your future sensors or real filters. The warning class is the weakest; tuning the model solely to increase a headline accuracy score could make that class worse.
+
+Ways to improve the real system after the sensors are built:
+
+1. Calibrate each sensor and collect genuine readings across different water sources, pumps, and filters.
+2. Record filter installation and replacement dates, confirmed faults, and complete filter lifecycles. Human-reviewed labels are more useful than guessed labels.
+3. Store history so flow, current, pressure trends, cumulative litres, and runtime reflect the actual filter lifecycle.
+4. Compare simple rule-based thresholds, random forests, boosting, and time-series models using **whole unseen filters** for testing. Track warning F1 and critical recall as well as overall accuracy.
+5. Add a remaining-useful-life model only after real replacement lifecycles exist; evaluate its error in days against a simple age/usage baseline.
+
+No remaining-useful-life estimate is currently produced. The status model assesses the pump only while running and flags contradictory readings such as nonzero flow with near-zero current. TDS and salt rejection alone cannot certify drinking-water safety.
+
+## Checks
 
 ```bash
 python3 -m unittest discover -s tests -v
 ```
 
-## What each sensor means
-
-| Input | Meaning |
-|---|---|
-| Pump current | Electrical motor load in amperes |
-| Permeate flow | Purified water produced each minute |
-| Pressure | Hydraulic pressure; may initially come from a potentiometer simulation |
-| Raw and output TDS | Approximate dissolved-solid readings before and after RO |
-| Salt rejection | `(1 - output TDS / raw TDS) × 100` |
-| Cumulative litres, age, runtime | Use since this filter was installed |
-| Trends | Percentage change during a recent week |
-
-The dashboard is a **manual experiment**. It does not ingest a physical ESP32 device yet. The status model is evaluated only while the pump is running. When current and flow are both near zero, it returns `off` rather than pretending to assess filter health. Contradictory readings such as flowing water with near-zero pump current are flagged for inspection.
-
-Conductivity-derived TDS depends on temperature and water composition. TDS and salt rejection alone do not certify drinking-water safety.
-
-## Results from the included training run
-
-The exact metrics are saved in [`models/metrics.json`](models/metrics.json). The synthetic test held out **63 complete simulated lifecycles** rather than random individual readings. The NREL test held out the entire **400 psi ramp campaign**.
-
-| Evaluation | Result | Scope |
-|---|---:|---|
-| Status accuracy | 87.1% | Simulated household scenarios only |
-| Status macro F1 | 0.810 | Simulated household scenarios only |
-| Critical recall | 88.9% | Simulated household scenarios only |
-| NREL permeate-flow MAE | 0.216 L/min | Separate experimental campaign |
-| NREL permeate-flow R² | 0.949 | Separate experimental campaign |
-
-The warning class is currently the weakest (F1 about 0.608). Additional real, independently confirmed examples are necessary before using any status for maintenance decisions.
-
-## Data and attribution
-
-The NREL files are downloaded from the [Department of Energy / NREL dataset page](https://catalog.data.gov/dataset/experimental-wave-desalination-data-with-variable-feed-and-pressure-input). The work is credited there to Kurby Sitterley, Zach Binger, and Scott Jenne and is available under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). `download_data.py` fetches `steady_state.zip` and `ramp.zip` from that source. Raw downloads are ignored by Git; `train.py` reads them without modifying the source files.
-
-The household simulator in `simulation.py` is original generated data for this prototype, **not a public research dataset or real sensor data**. It uses a fixed seed so results can be reproduced.
-
-## Next real-data milestone
-
-Connect the ESP32 sensors and record timestamp, device ID, filter ID, measured values, pump state, calibration state, and every filter installation/replacement event. Keep simulated pressure readings marked as simulated. After enough complete RO membrane lifecycles are collected, compare a simple age/usage baseline against regression and survival models using whole lifecycles held out for evaluation. Deploy a model only if it improves on the baseline and its error in days is acceptable.
+The dataset is original reproducible simulation from [`simulation.py`](simulation.py), not measured water-purifier data or a public research dataset.

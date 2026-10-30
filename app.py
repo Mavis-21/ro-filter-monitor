@@ -1,9 +1,10 @@
-"""Local API and dashboard for exploring the two trained models."""
+"""Local API for simulated RO scenarios and future USB sensor readings."""
 
 from __future__ import annotations
 
 import json
 import os
+import secrets
 from pathlib import Path
 
 os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(max(1, (os.cpu_count() or 2) - 1)))
@@ -16,16 +17,19 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from core import FEATURES, salt_rejection
+from hardware import SENSOR_FIELDS, bridge
 
 ROOT = Path(__file__).resolve().parent
 MODEL_PATH = ROOT / "models" / "model.joblib"
 METRICS_PATH = ROOT / "models" / "metrics.json"
+DATA_PATH = ROOT / "data" / "synthetic" / "ro_lifecycles.csv"
 
 if not MODEL_PATH.exists() or not METRICS_PATH.exists():
-    raise RuntimeError("Model missing. Run `python3 download_data.py` and `python3 train.py` first.")
+    raise RuntimeError("Model missing. Run `python3 train.py` first.")
 
 bundle = joblib.load(MODEL_PATH)
 metrics = json.loads(METRICS_PATH.read_text(encoding="utf-8"))
+held_out = pd.read_csv(DATA_PATH).query("split == 'test'") if DATA_PATH.exists() else pd.DataFrame()
 app = FastAPI(title="RO Monitor Lab", version="0.1.0")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
@@ -44,11 +48,12 @@ class SensorInput(BaseModel):
     pressure_trend_pct_week: float = Field(ge=-100, le=100)
 
 
-class NrelInput(BaseModel):
-    pressure_bar: float = Field(ge=34, le=63)
-    feed_flow_l_min: float = Field(ge=14, le=27)
-    feed_conductivity_ms_cm: float = Field(ge=50, le=62)
-    temperature_c: float = Field(ge=19, le=21)
+class PortInput(BaseModel):
+    port: str
+
+
+class LivePredictionInput(BaseModel):
+    filter_age_days: float = Field(default=0, ge=0, le=3000)
 
 
 @app.get("/")
@@ -59,6 +64,11 @@ def home() -> FileResponse:
 @app.get("/api/model-info")
 def model_info() -> dict:
     return metrics
+
+
+@app.get("/api/synthetic-data")
+def synthetic_data() -> FileResponse:
+    return FileResponse(DATA_PATH, filename="ro_lifecycles.csv", media_type="text/csv")
 
 
 @app.post("/api/predict")
@@ -132,15 +142,70 @@ def predict(sensor: SensorInput) -> dict:
     }
 
 
-@app.post("/api/nrel-flow")
-def nrel_flow(values: NrelInput) -> dict:
-    reading = values.model_dump() if hasattr(values, "model_dump") else values.dict()
-    frame = pd.DataFrame([reading], columns=bundle["nrel_features"])
-    predicted_flow = float(bundle["nrel_flow_model"].predict(frame)[0])
-    if predicted_flow < 0:
-        raise HTTPException(status_code=422, detail="Input produced an invalid flow prediction")
+@app.get("/api/random-sample")
+def random_sample() -> dict:
+    if held_out.empty:
+        raise HTTPException(status_code=503, detail="Run python3 train.py to create the held-out sample file.")
+    row = held_out.iloc[secrets.randbelow(len(held_out))]
+    values = {key: float(row[key]) for key in FEATURES if key != "salt_rejection_pct"}
+    result = predict(SensorInput(**values))
     return {
-        "predicted_permeate_flow_l_min": round(predicted_flow, 3),
-        "source": "NREL experimental seawater RO data",
-        "scope": "Experimental range only; not calibrated for household purifiers",
+        "values": values,
+        "expected_label": str(row["label"]),
+        "predicted_label": result["model_status"],
+        "correct": result["model_status"] == row["label"],
+        "lifecycle_id": int(row["lifecycle_id"]),
     }
+
+
+@app.get("/api/hardware/ports")
+def hardware_ports() -> dict:
+    return {"ports": bridge.ports()}
+
+
+@app.post("/api/hardware/connect")
+def hardware_connect(choice: PortInput) -> dict:
+    try:
+        bridge.connect(choice.port)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return bridge.status()
+
+
+@app.post("/api/hardware/disconnect")
+def hardware_disconnect() -> dict:
+    bridge.disconnect()
+    return bridge.status()
+
+
+@app.get("/api/hardware/status")
+def hardware_status() -> dict:
+    return bridge.status()
+
+
+@app.post("/api/hardware/check")
+def hardware_check() -> dict:
+    state = bridge.status()
+    state["all_replying"] = state["connected"] and all(
+        state["sensor_status"][key] == "replying" for key in SENSOR_FIELDS
+    )
+    return state
+
+
+@app.post("/api/hardware/predict")
+def hardware_predict(settings: LivePredictionInput) -> dict:
+    state = hardware_check()
+    if not state["all_replying"]:
+        raise HTTPException(status_code=409, detail="Connect the board and receive fresh values from every sensor first.")
+    values = dict(state["values"])
+    values.update({
+        "cumulative_litres": state["cumulative_litres_since_connect"],
+        "runtime_hours": state["runtime_hours_since_connect"],
+        "filter_age_days": settings.filter_age_days,
+        "flow_trend_pct_week": 0,
+        "current_trend_pct_week": 0,
+        "pressure_trend_pct_week": 0,
+    })
+    result = predict(SensorInput(**values))
+    result["notes"].append("Usage is counted since connection; weekly trends are set to zero until historical storage is added.")
+    return {"reading": values, "prediction": result}

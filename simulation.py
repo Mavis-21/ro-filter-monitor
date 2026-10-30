@@ -5,6 +5,7 @@ These are generated examples, not measurements or verified failure labels.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import numpy as np
 import pandas as pd
 
@@ -17,6 +18,7 @@ def make_simulated_lifecycles(count: int = 260, seed: int = 20261030) -> pd.Data
     fault_types = ("fouling", "membrane", "pump", "mixed")
 
     for lifecycle_id in range(count):
+        installed_at = datetime(2024, 1, 1, tzinfo=timezone.utc) + timedelta(days=lifecycle_id)
         points = int(rng.integers(65, 116))
         lifetime_days = float(rng.uniform(170, 460))
         base_current = float(rng.uniform(0.85, 2.5))
@@ -60,6 +62,7 @@ def make_simulated_lifecycles(count: int = 260, seed: int = 20261030) -> pd.Data
             records.append(
                 {
                     "lifecycle_id": lifecycle_id,
+                    "timestamp_utc": (installed_at + timedelta(days=float(age))).isoformat(),
                     "current_a": round(current, 4),
                     "flow_l_min": round(flow, 4),
                     "pressure_bar": round(pressure, 4),

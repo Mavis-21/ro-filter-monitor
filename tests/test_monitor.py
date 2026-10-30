@@ -2,8 +2,11 @@ import unittest
 
 from pydantic import ValidationError
 
-from app import NrelInput, SensorInput, nrel_flow, predict
+from fastapi import HTTPException
+
+from app import SensorInput, hardware_predict, random_sample, LivePredictionInput, predict
 from core import salt_rejection
+from hardware import SensorBridge
 
 
 HEALTHY = {
@@ -49,14 +52,24 @@ class MonitorTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             SensorInput(**{**HEALTHY, "pressure_bar": -1})
 
-    def test_nrel_prediction_is_finite(self):
-        result = nrel_flow(NrelInput(
-            pressure_bar=50,
-            feed_flow_l_min=22,
-            feed_conductivity_ms_cm=55,
-            temperature_c=20,
-        ))
-        self.assertGreater(result["predicted_permeate_flow_l_min"], 0)
+    def test_random_example_is_from_held_out_lifecycle(self):
+        sample = random_sample()
+        self.assertIn(sample["expected_label"], ("normal", "warning", "critical"))
+        self.assertEqual(sample["correct"], sample["expected_label"] == sample["predicted_label"])
+
+    def test_sensor_check_requires_a_fresh_complete_packet(self):
+        bridge = SensorBridge()
+        bridge.ingest('{"current_a":1.5,"flow_l_min":1.7}')
+        self.assertEqual(bridge.status()["sensor_status"]["pressure_bar"], "waiting")
+        bridge.ingest('{"current_a":1.5,"flow_l_min":1.7,"pressure_bar":6.6,"raw_tds_ppm":520,"output_tds_ppm":34}')
+        self.assertTrue(all(value == "replying" for value in bridge.status()["sensor_status"].values()))
+        bridge.disconnect()
+        self.assertFalse(bridge.status()["fresh"])
+
+    def test_live_prediction_requires_connected_board(self):
+        with self.assertRaises(HTTPException) as error:
+            hardware_predict(LivePredictionInput(filter_age_days=90))
+        self.assertEqual(error.exception.status_code, 409)
 
 
 if __name__ == "__main__":

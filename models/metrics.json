@@ -1,11 +1,13 @@
 {
-  "trained_at_utc": "2026-10-30T06:44:32.481267+00:00",
-  "nrel_archives_sha256": {
-    "steady_state": "12d4cebcb29e2eb992b51e87717ba35ac526d440fe3f210bca6f064208ced7e6",
-    "ramp": "7457eb94d0fa5829c431a0d967e3b8951eab778bc6a9e97c5f661a461f669c1a"
-  },
+  "trained_at_utc": "2026-10-30T07:16:49.192314+00:00",
   "status_model": {
     "source": "simulated household RO lifecycles only",
+    "selected_model": "random_forest_baseline",
+    "validation_macro_f1_by_model": {
+      "random_forest_baseline": 0.799,
+      "random_forest_refined": 0.7831,
+      "gradient_boosting": 0.7766
+    },
     "train_rows": 17999,
     "test_rows": 5636,
     "train_lifecycles": 197,
@@ -74,21 +76,8 @@
       "warning": 3576
     }
   },
-  "nrel_flow_model": {
-    "source": "NREL experimental seawater RO; separate dp=400 ramp campaign held out",
-    "train_rows": 17135,
-    "test_rows": 5298,
-    "mae_l_min": 0.2163,
-    "r2": 0.9489,
-    "mean_baseline_mae_l_min": 1.4104,
-    "pressure_range_bar": [
-      34.31,
-      62.88
-    ]
-  },
   "limitations": [
-    "Status accuracy is measured only on simulated household RO lifecycles.",
-    "NREL seawater RO equipment runs at much higher pressure than a household purifier.",
-    "Neither dataset contains verified household filter replacement events; no remaining-life model is trained."
+    "All status labels and accuracy scores come from simulated household RO lifecycles.",
+    "No real filter replacement lifecycles or remaining-life model are available yet."
   ]
 }
