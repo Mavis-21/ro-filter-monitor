@@ -139,10 +139,37 @@ route("wire_raw_tds_orange", [[-254, -148, 49], [-245, -173, 115], [85, -173, 11
 route("wire_output_tds_green", [[249, 136, 64], [255, 136, 110], [296, 136, 110], [296, -196, 110], [178, -183, 55]], 2, GREEN)
 route("wire_common_ground_black", [[125, -183, 55], [90, -183, 72], [90, -82, 72]], 2, BLACK)
 
+# Breadboard prototype area: this is where the first build can use jumper wires
+# before the final electronics enclosure is designed.
+box("13_solderless_breadboard_base", [170, -273, 28], [248, 108, 12], WHITE)
+box("breadboard_center_gap", [170, -273, 35], [230, 7, 3], NAVY)
+for row in range(10):
+    for column in range(20):
+        x = 61 + column * 11.5
+        y = -318 + row * 10
+        box(f"breadboard_socket_{row+1}_{column+1}", [x, y, 35], [3, 3, 3], BLACK)
+for y, color in ((-322, RED), (-224, BLACK)):
+    box(f"breadboard_power_rail_{y}", [170, y, 35], [220, 4, 3], color)
+
+# LCD status display visible on the front of the prototype.
+box("14_lcd_module_frame", [175, -340, 52], [172, 16, 64], BLUE)
+box("lcd_display_screen", [175, -350, 52], [145, 4, 38], [30, 76, 53, 255])
+for i in range(6):
+    box(f"lcd_character_block_{i+1}", [120 + i * 22, -354, 52], [13, 2, 5], GREEN)
+for i in range(4):
+    box(f"lcd_connector_pin_{i+1}", [120 + i * 15, -329, 42], [5, 5, 7], GOLD)
+
+# Visible breadboard and LCD connections. These are functional groups only;
+# exact pins depend on the selected board and sensor modules.
+route("wire_board_to_breadboard_power", [[128, -183, 55], [105, -210, 65], [105, -225, 65]], 2, RED)
+route("wire_board_to_breadboard_ground", [[140, -183, 55], [150, -210, 60], [150, -224, 60]], 2, BLACK)
+route("wire_breadboard_to_lcd_data", [[205, -225, 45], [245, -245, 70], [245, -328, 70], [165, -328, 45]], 2, YELLOW)
+route("wire_breadboard_to_lcd_power", [[95, -225, 42], [76, -244, 72], [76, -329, 72], [120, -329, 45]], 2, RED)
+
 # Potentiometer stand-in for pressure calibration during development.
 box("12_pressure_potentiometer_training_only", [261, -183, 48], [25, 25, 10], BLUE)
 rod("12_pressure_potentiometer_knob", [261, -183, 53], [261, -183, 67], 8, BLACK)
 
-scene.export(OUT / "clearwell_ro_concept.glb")
-scene.export(OUT / "clearwell_ro_concept.obj")
-print(f"Wrote {OUT / 'clearwell_ro_concept.glb'} with {len(scene.geometry)} named objects")
+scene.export(OUT / "clearwell_ro_monitor_full.glb")
+scene.export(OUT / "clearwell_ro_monitor_full.obj")
+print(f"Wrote {OUT / 'clearwell_ro_monitor_full.glb'} with {len(scene.geometry)} named objects")

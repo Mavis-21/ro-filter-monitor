@@ -1,8 +1,8 @@
 # Clearwell RO Monitor — 3D concept assembly
 
-`clearwell_ro_concept.glb` is a coloured 3D concept assembly in millimetres. It is for explaining the project, checking component placement, and planning the first physical prototype.
+`clearwell_ro_monitor_full.glb` is a coloured 3D concept assembly in millimetres. It is for explaining the project, checking component placement, and planning the first physical prototype.
 
-Open it in a 3D viewer that supports GLB, or use `clearwell_ro_concept.obj` in a CAD or rendering tool. The GLB is also stored in the account's 3DEXPERIENCE 3DDrive as `clearwell_ro_concept.glb`.
+Open it in a 3D viewer that supports GLB, or use `clearwell_ro_monitor_full.obj` in a CAD or rendering tool. The GLB is also stored in the account's 3DEXPERIENCE 3DDrive.
 
 ## What the model contains
 
@@ -12,7 +12,9 @@ Open it in a 3D viewer that supports GLB, or use `clearwell_ro_concept.obj` in a
 4. Orange raw-water tubing, blue purified-water tubing, and a dark waste-water line.
 5. A permeate-flow meter, pressure transducer, raw-water TDS probe, and output-water TDS probe.
 6. A separate electronics enclosure with a USB-C microcontroller-board placeholder, headers, status LEDs, and a temporary pressure potentiometer.
-7. Colour-coded conceptual sensor wires that converge at the board.
+7. A solderless breadboard with visible power rails and jumper sockets.
+8. A front-facing LCD status display.
+9. Colour-coded conceptual sensor wires that converge at the board, breadboard, and LCD.
 
 The model uses an assumed 620 mm × 440 mm wall panel. It does not claim the exact dimensions, electrical pins, voltage levels, pressure rating, membrane type, or tubing diameter of the parts you eventually buy.
 
