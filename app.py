@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(os.cpu_count() or 2))
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(max(1, (os.cpu_count() or 2) - 1)))
 
 import joblib
 import pandas as pd
